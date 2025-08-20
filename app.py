@@ -1,29 +1,38 @@
 from flask import Flask, request, jsonify
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import Credentials
 import datetime
 
 app = Flask(__name__)
 
 # Google Sheets setup
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
+scope = ["https://www.googleapis.com/auth/spreadsheets",
+         "https://www.googleapis.com/auth/drive"]
+
+creds = Credentials.from_service_account_file("service_account.json", scopes=scope)
 client = gspread.authorize(creds)
-sheet = client.open_by_key("1oHHzLUl_XW2pk3F7GXX55yrrrjbS8qsD2r6HX2SX9rA").sheet1
+
+# Replace with your actual sheet ID
+SHEET_ID = "1oHHzLUl_XW2pk3F7GXX55yrrrjbS8qsD2r6HX2SX9rA"
+sheet = client.open_by_key(SHEET_ID).sheet1
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    data = request.get_json()
-    phone = data.get("phone", "")
+    try:
+        data = request.get_json(force=True)
+        phone = data.get("phone", "")
 
-    now = datetime.datetime.now()
-    date = now.strftime("%Y-%m-%d")   # Example: 2025-08-19
-    time = now.strftime("%H:%M:%S")   # Example: 15:42:10
+        # Current date & time
+        now = datetime.datetime.now()
+        date = now.strftime("%Y-%m-%d")   # YYYY-MM-DD
+        time = now.strftime("%H:%M:%S")   # HH:MM:SS
 
-    # Append date, time, phone
-    sheet.append_row([date, time, phone])
+        # Append row → [Date, Time, Phone]
+        sheet.append_row([date, time, phone])
 
-    return jsonify({"status": "success"})
+        return jsonify({"status": "success", "data": {"date": date, "time": time, "phone": phone}}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(port=5000)
+    app.run(host="0.0.0.0", port=5000)
