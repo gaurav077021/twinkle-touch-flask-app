@@ -2,6 +2,8 @@ from flask import Flask, request, jsonify
 import gspread
 from google.oauth2.service_account import Credentials
 import datetime
+import os
+import json
 
 app = Flask(__name__)
 
@@ -9,7 +11,9 @@ app = Flask(__name__)
 scope = ["https://www.googleapis.com/auth/spreadsheets",
          "https://www.googleapis.com/auth/drive"]
 
-creds = Credentials.from_service_account_file("service_account.json", scopes=scope)
+# Load creds from environment variable
+service_account_info = json.loads(os.environ["GOOGLE_CREDS"])
+creds = Credentials.from_service_account_info(service_account_info, scopes=scope)
 client = gspread.authorize(creds)
 
 # Replace with your actual sheet ID
@@ -30,7 +34,10 @@ def webhook():
         # Append row → [Date, Time, Phone]
         sheet.append_row([date, time, phone])
 
-        return jsonify({"status": "success", "data": {"date": date, "time": time, "phone": phone}}), 200
+        return jsonify({
+            "status": "success",
+            "data": {"date": date, "time": time, "phone": phone}
+        }), 200
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
